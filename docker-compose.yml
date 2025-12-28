@@ -1,0 +1,55 @@
+version: "3.9"
+
+services:
+  couchbase:
+    image: couchbase:enterprise-7.6.0
+    container_name: couchbase
+    hostname: couchbase
+    ports:
+      - "8091:8091"   # Web UI
+      - "8092:8092"
+      - "8093:8093"
+      - "8094:8094"
+      - "11210:11210"
+    volumes:
+      - couchbase_data:/opt/couchbase/var
+    networks:
+      - dbnet
+    ulimits:
+      nofile:
+        soft: 40960
+        hard: 40960
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8091" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  oracle-xe:
+    image: container-registry.oracle.com/database/express:21.3.0-xe
+    container_name: oracle-xe
+    hostname: oracle-xe
+    ports:
+      - "1521:1521"   # Oracle listener
+      - "5500:5500"   # EM Express
+    environment:
+      ORACLE_PWD: Oracle123
+      ORACLE_CHARACTERSET: AL32UTF8
+    volumes:
+      - oracle_data:/opt/oracle/oradata
+    shm_size: 1g
+    networks:
+      - dbnet
+    healthcheck:
+      test: [ "CMD", "bash", "-c", "echo 'select 1 from dual;' | sqlplus -s system/Oracle123@localhost/XEPDB1" ]
+      interval: 60s
+      timeout: 20s
+      retries: 10
+
+volumes:
+  couchbase_data:
+  oracle_data:
+
+networks:
+  dbnet:
+    driver: bridge
