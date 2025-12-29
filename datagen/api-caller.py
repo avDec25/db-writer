@@ -6,7 +6,8 @@ from faker import Faker
 from collections import deque
 import json
 
-BASE_URL = "http://localhost:60600/users"
+BASE_URL = "http://localhost:8080/users"
+# BASE_URL = "http://localhost:60600/users"
 SLEEP_SECONDS = 0.05
 MAX_USERS_IN_MEMORY = 50
 REQUEST_TIMEOUT = 2  # seconds

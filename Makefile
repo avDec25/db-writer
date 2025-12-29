@@ -16,3 +16,8 @@ update:
 
 clean:
 	kubectl delete namespace local-k8s
+
+clean-images:
+	nerdctl -n k8s.io images
+	nerdctl -n k8s.io image prune
+	nerdctl -n k8s.io images
