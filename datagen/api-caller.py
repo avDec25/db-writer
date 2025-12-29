@@ -6,12 +6,14 @@ from faker import Faker
 from collections import deque
 import json
 
-BASE_URL = "http://localhost:8080/users"
-SLEEP_SECONDS = 2.0
+BASE_URL = "http://localhost:60600/users"
+SLEEP_SECONDS = 0.05
 MAX_USERS_IN_MEMORY = 50
+REQUEST_TIMEOUT = 2  # seconds
+MAX_RETRIES = 5
+RETRY_BACKOFF = 0.4  # seconds
 
 fake = Faker()
-
 created_user_ids = deque(maxlen=MAX_USERS_IN_MEMORY)
 
 write_count = 0
@@ -19,7 +21,8 @@ read_count = 0
 
 
 def pretty_response(response):
-    """Safely print response body"""
+    if response is None:
+        return "<no response>"
     try:
         return json.dumps(response.json(), indent=2)
     except ValueError:
@@ -34,39 +37,80 @@ def generate_user():
     }
 
 
+def request_with_retry(method, url, **kwargs):
+    """
+    Generic request wrapper with retry logic
+    """
+    for attempt in range(1, MAX_RETRIES + 1):
+        try:
+            response = requests.request(
+                method,
+                url,
+                timeout=REQUEST_TIMEOUT,
+                **kwargs
+            )
+
+            # Retry on server errors
+            if response.status_code >= 500:
+                raise requests.exceptions.HTTPError(
+                    f"Server error: {response.status_code}"
+                )
+
+            return response
+
+        except requests.exceptions.RequestException as e:
+            print(f"[RETRY {attempt}/{MAX_RETRIES}] {method.upper()} {url} failed: {e}")
+
+            if attempt < MAX_RETRIES:
+                time.sleep(RETRY_BACKOFF * attempt)  # linear backoff
+            else:
+                print(f"[FAILED] {method.upper()} {url} after {MAX_RETRIES} attempts")
+                return None
+
+
 def write_user():
     global write_count
     user = generate_user()
-    response = requests.post(BASE_URL, json=user)
 
-    print(f"\n[WRITE] Status: {response.status_code}")
-    print(f"[WRITE] Response:\n{pretty_response(response)}")
+    response = request_with_retry(
+        "post",
+        BASE_URL,
+        json=user
+    )
 
-    if response.status_code in (200, 201):
+    print("\n[WRITE]")
+    print(f"Response:\n{pretty_response(response)}")
+
+    if response and response.status_code in (200, 201):
         created_user_ids.append(user["id"])
         write_count += 1
         print(f"[WRITE] Created user {user['id']} (tracked={len(created_user_ids)})")
     else:
-        print("[WRITE] Failed to create user")
+        print("[WRITE] Giving up on this user")
 
 
 def read_user():
     global read_count
+
     if not created_user_ids:
         print("[READ] No users available, skipping")
         return
 
     user_id = random.choice(tuple(created_user_ids))
-    response = requests.get(f"{BASE_URL}/{user_id}")
 
-    print(f"\n[READ] Status: {response.status_code}")
-    print(f"[READ] Response:\n{pretty_response(response)}")
+    response = request_with_retry(
+        "get",
+        f"{BASE_URL}/{user_id}"
+    )
 
-    if response.status_code == 200:
+    print("\n[READ]")
+    print(f"Response:\n{pretty_response(response)}")
+
+    if response and response.status_code == 200:
         read_count += 1
         print(f"[READ] Fetched user {user_id}")
     else:
-        print(f"[READ] Failed for {user_id}")
+        print(f"[READ] Giving up on {user_id}")
 
 
 def main():
