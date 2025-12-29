@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: db-writer-deployment
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: db-writer
+  template:
+    metadata:
+      labels:
+        app: db-writer
+    spec:
+      containers:
+        - name: db-writer
+          image: db-writer:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: db-writer-configs

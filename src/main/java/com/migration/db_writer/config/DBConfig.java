@@ -1,5 +1,6 @@
 package com.migration.db_writer.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.couchbase.config.AbstractCouchbaseConfiguration;
 import org.springframework.data.couchbase.repository.config.EnableCouchbaseRepositories;
@@ -13,9 +14,12 @@ public class DBConfig extends AbstractCouchbaseConfiguration {
         return "user-bucket";
     }
 
+    @Value("${db.baseurl}")
+    String DB_BASE_URL;
+
     @Override
     public String getConnectionString() {
-        return "couchbase://localhost:11210";
+        return String.format("couchbase://%s:11210", DB_BASE_URL);
     }
 
     @Override

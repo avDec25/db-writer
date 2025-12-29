@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: db-writer-configs
+data:
+  DB_COUCHBASE_WRITES: "true"
+  DB_ORACLE_WRITES: "false"
+  DB_READS: "couchbase"
+  DB_BASEURL: "host.rancher-desktop.internal"
